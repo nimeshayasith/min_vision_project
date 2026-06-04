@@ -83,8 +83,10 @@ def clean_dataset(
                 continue
             seen_hashes.add(h)
 
-        # Copy to output (preserving original filename)
-        dest = output_dir / img_path.name
+        # Copy to output (preserving uniqueness for nested directories)
+        rel_path = img_path.relative_to(input_dir)
+        dest_name = "_".join(rel_path.parts)
+        dest = output_dir / dest_name
         dest.write_bytes(img_path.read_bytes())
         kept += 1
 

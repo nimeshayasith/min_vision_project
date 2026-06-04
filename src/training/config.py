@@ -14,6 +14,7 @@ Current dataset: Kaggle phishing screenshots (2 classes)
 CONFIG = {
     # Model
     "backbone":     "resnet50",   # Options: "resnet50", "vit_base_patch16_224"
+    "pretrained":   True,         # Set to False to start instantly without downloading pre-trained weights from Hugging Face
     "num_classes":  2,            # Currently 2: legitimate + phishing
                                   # Change to 3 when clickbait class is added
 
@@ -38,4 +39,5 @@ CONFIG = {
     "log_interval": 5,   # Print every N batches
 }
 
-CLASS_NAMES = ["legitimate", "phishing", "clickbait"]
+CLASS_NAMES = ["legitimate", "clickbait"]
+

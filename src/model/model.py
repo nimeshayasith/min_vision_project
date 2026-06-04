@@ -22,7 +22,10 @@ class ClickbaitDetector(nn.Module):
 
     def __init__(self, backbone: str = "resnet50"):
         super().__init__()
-        self.extractor = FeatureExtractor(model_name=backbone, pretrained=True)
+        self.extractor = FeatureExtractor(
+            model_name=backbone,
+            pretrained=CONFIG.get("pretrained", True)
+        )
         self.mcp = MCPPipeline(
             input_dim=self.extractor.feature_dim,
             hidden_dim=512,

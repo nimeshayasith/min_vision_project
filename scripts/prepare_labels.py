@@ -27,8 +27,9 @@ from pathlib import Path
 # Folder name → class ID mapping
 FOLDER_TO_CLASS = {
     "genuine_site_0": 0,   # legitimate
-    "phishing_site_1": 1,  # phishing
+    "screenshot": 1,       # clickbait
 }
+
 
 
 def prepare_labels(cleaned_dir: str, annotated_dir: str) -> None:

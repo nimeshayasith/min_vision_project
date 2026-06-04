@@ -126,10 +126,37 @@ def preprocess_pipeline_from_array(img_array: np.ndarray) -> np.ndarray:
     Input:  RGB uint8 array (H, W, 3)
     Output: normalized float32 (224, 224, 3)
     """
+    # Create debug directory
+    debug_dir = Path("debug_preprocessing")
+    debug_dir.mkdir(exist_ok=True)
+
     # Convert RGB to BGR for OpenCV processing
     img_bgr = cv2.cvtColor(img_array, cv2.COLOR_RGB2BGR)
-    img_bgr = reduce_noise(img_bgr)
-    img_bgr = enhance_contrast(img_bgr)
-    img_bgr = resize_image(img_bgr)
-    img_out = normalize_image(img_bgr)   # normalize_image converts back to RGB
+    cv2.imwrite(str(debug_dir / "01_input.png"), img_bgr)
+
+    # Denoise
+    img_denoised = reduce_noise(img_bgr)
+    cv2.imwrite(str(debug_dir / "02_denoised.png"), img_denoised)
+
+    # Contrast enhance
+    img_enhanced = enhance_contrast(img_denoised)
+    cv2.imwrite(str(debug_dir / "03_enhanced.png"), img_enhanced)
+
+    # Region of Interest (for visualization only)
+    try:
+        regions = detect_ui_regions(img_enhanced)
+        img_regions = img_enhanced.copy()
+        for x, y, w, h in regions:
+            cv2.rectangle(img_regions, (x, y), (x + w, y + h), (0, 255, 0), 2)
+        cv2.imwrite(str(debug_dir / "04_ui_regions.png"), img_regions)
+    except Exception as e:
+        print(f"Error saving UI regions debug image: {e}")
+
+    # Resize
+    img_resized = resize_image(img_enhanced)
+    cv2.imwrite(str(debug_dir / "05_resized.png"), img_resized)
+
+    # Normalize
+    img_out = normalize_image(img_resized)   # normalize_image converts back to RGB
     return img_out
+
