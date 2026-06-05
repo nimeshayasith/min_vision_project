@@ -1,0 +1,14 @@
+path: e:/7th Sem/EC7205 - Computer Vision and Image Processing/Project/Code/min_vision_project/data/roboflow
+train: train/images
+val: valid/images
+test: test/images
+
+nc: 5
+names: ['Buttons', 'Computer-vision', 'ad_banner', 'close_button', 'fake_download_button']
+
+roboflow:
+  workspace: nimeshas-workspace-h5qjz
+  project: computer_vision-vsilt
+  version: dataset
+  license: Private
+  url: https://app.roboflow.com/nimeshas-workspace-h5qjz/computer_vision-vsilt/dataset

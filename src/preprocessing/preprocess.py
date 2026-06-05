@@ -160,3 +160,16 @@ def preprocess_pipeline_from_array(img_array: np.ndarray) -> np.ndarray:
     img_out = normalize_image(img_resized)   # normalize_image converts back to RGB
     return img_out
 
+
+def preprocess_crop(crop: np.ndarray) -> np.ndarray:
+    """
+    Preprocess a cropped BGR image region.
+    Denoise → Enhance contrast → Resize to (224, 224) → Normalize.
+    """
+    img = reduce_noise(crop)
+    img = enhance_contrast(img)
+    img = resize_image(img)
+    img_out = normalize_image(img)
+    return img_out
+
+
