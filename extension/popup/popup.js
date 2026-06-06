@@ -112,6 +112,9 @@ scanBtn.addEventListener("click", async () => {
         const result = await res.json();
         chrome.storage.session.set({ lastResult: result });
         renderResult(result);
+        
+        // Tell the content script on the page to draw the red boxes
+        chrome.tabs.sendMessage(tab.id, { action: "drawBoxes", data: result }).catch(() => {});
       } catch (e) {
         labelBadge.textContent = "Server offline";
         confLabel.textContent  = "Run: python -m src.server.app";

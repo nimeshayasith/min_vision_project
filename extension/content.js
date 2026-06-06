@@ -119,9 +119,9 @@ function drawClickbaitBoxes(boxes) {
     const wrapper = document.createElement("div");
     wrapper.id = `clickbait-box-${idx}`;
     wrapper.style.cssText = `
-      position: fixed;
-      left: ${box.x}px;
-      top: ${box.y}px;
+      position: absolute;
+      left: ${box.x + window.scrollX}px;
+      top: ${box.y + window.scrollY}px;
       width: ${box.w}px;
       height: ${box.h}px;
       z-index: 2147483640;
@@ -203,3 +203,10 @@ function drawClickbaitBoxes(boxes) {
     document.head.appendChild(style);
   }
 }
+
+// Listen for manual re-scans triggered from the popup
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.action === "drawBoxes" && message.data) {
+    handleDetectionResult(message.data);
+  }
+});
