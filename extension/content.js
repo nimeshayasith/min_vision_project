@@ -92,18 +92,57 @@ function showAlertBanner(label, confidence) {
 
 
 function drawBoundingBoxes(boxes) {
+  // Server returns normalized coords [0,1] relative to the screenshot.
+  // The screenshot covers the visible viewport, so we scale to CSS pixels.
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+
+  const labelMap = {
+    fake_download_button: "Fake Download",
+    ad_banner:            "Deceptive Ad",
+    close_button:         "Fake Close",
+  };
+
   boxes.forEach((box, idx) => {
+    const pxX = Math.round(box.x * vw);
+    const pxY = Math.round(box.y * vh);
+    const pxW = Math.round(box.w * vw);
+    const pxH = Math.round(box.h * vh);
+    const pct = Math.round((box.confidence || 0) * 100);
+    const displayLabel = labelMap[box.class] || box.class;
+
+    // Outer box overlay
     const overlay = document.createElement("div");
     overlay.id = `clickbait-box-${idx}`;
     overlay.style.cssText = `
       position: fixed;
-      left: ${box.x}px; top: ${box.y}px;
-      width: ${box.w}px; height: ${box.h}px;
+      left: ${pxX}px; top: ${pxY}px;
+      width: ${pxW}px; height: ${pxH}px;
       border: 3px solid #d32f2f; z-index: 2147483646;
       pointer-events: none;
       background: rgba(211, 47, 47, 0.08);
       border-radius: 2px;
+      box-sizing: border-box;
     `;
+
+    // Label chip above the box
+    const label = document.createElement("div");
+    label.style.cssText = `
+      position: absolute;
+      top: -24px; left: -3px;
+      background: #d32f2f;
+      color: white;
+      font-size: 11px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-weight: 600;
+      padding: 2px 6px;
+      border-radius: 3px 3px 0 0;
+      white-space: nowrap;
+      pointer-events: none;
+    `;
+    label.textContent = `⚠ ${displayLabel} (${pct}%)`;
+    overlay.appendChild(label);
+
     document.body.appendChild(overlay);
   });
 }

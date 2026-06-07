@@ -1,9 +1,7 @@
 """
 app.py — Phase 7: Flask Backend Server
-Owner: Wanigasooriya | Tech: Flask, PyTorch
-
-Receives base64-encoded webpage screenshots from the Chrome extension
-and returns classification results.
+Receives base64 screenshots from the Chrome extension, runs YOLOv8 inference,
+and returns the page classification + bounding boxes of deceptive UI elements.
 
 Start server:
     python -m src.server.app
@@ -11,120 +9,173 @@ Start server:
 
 import base64
 import io
-import numpy as np
-import torch
-from PIL import Image
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-
-from src.model.model import ClickbaitDetector, CLASS_NAMES
-from src.preprocessing.preprocess import preprocess_pipeline_from_array
-from src.training.config import CONFIG
-
-app = Flask(__name__)
-CORS(app)   # Required: Chrome extension is cross-origin
-
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-# ── Load trained model at startup ──
-import os
 from pathlib import Path
 
-_model = None
+import numpy as np
+import torch
+from flask import Flask, jsonify, request
+from flask_cors import CORS
+from PIL import Image
 
-def get_model() -> ClickbaitDetector:
-    global _model
-    if _model is None:
-        ckpt = Path(CONFIG["checkpoint_dir"]) / "best_model.pth"
-        _model = ClickbaitDetector(backbone=CONFIG["backbone"])
-        if ckpt.exists():
-            _model.load_state_dict(torch.load(str(ckpt), map_location=DEVICE))
-            print(f"✅ Model loaded from {ckpt}")
-        else:
-            print(f"⚠️  No checkpoint found at {ckpt}. Using untrained model for testing.")
-        _model.to(DEVICE)
-        _model.eval()
-    return _model
+app = Flask(__name__)
+CORS(app)   # Required: Chrome extension is a cross-origin caller
+
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+
+YOLO_CHECKPOINT = PROJECT_ROOT / "models" / "checkpoints" / "yolo_best.pt"
+
+# Classes from the Roboflow dataset that indicate deceptive intent
+DECEPTIVE_CLASSES = {"fake_download_button", "ad_banner", "close_button"}
+
+# Minimum YOLO confidence to include a detection
+CONF_THRESHOLD = 0.20   # Low threshold — small dataset model has lower raw confidence scores
+
+_yolo_model = None
 
 
-# ────────────────────────────────────────────────
+def get_model():
+    global _yolo_model
+    if _yolo_model is not None:
+        return _yolo_model
+
+    if not YOLO_CHECKPOINT.exists():
+        print(f"⚠️  No YOLO checkpoint at {YOLO_CHECKPOINT}")
+        print("    Run:  python scripts/train_yolo.py")
+        return None
+
+    from ultralytics import YOLO
+    _yolo_model = YOLO(str(YOLO_CHECKPOINT))
+    print(f"✅ YOLO model loaded from {YOLO_CHECKPOINT}")
+    return _yolo_model
+
+
+# ─────────────────────────────────────────────────────────
 # Routes
-# ────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────
 
 @app.route("/analyze", methods=["POST"])
 def analyze():
     """
-    Receives a base64-encoded webpage screenshot from the Chrome extension.
-
     Request JSON:
-        {
-            "image": "data:image/png;base64,...",
-            "url":   "https://example.com"
-        }
+        { "image": "data:image/png;base64,...", "url": "https://..." }
 
     Response JSON:
         {
-            "label":         "legitimate" | "phishing" | "clickbait",
-            "confidence":    0.95,
-            "probabilities": {"legitimate": 0.95, "phishing": 0.04, "clickbait": 0.01},
-            "bounding_boxes": []
+            "label":           "legitimate" | "clickbait",
+            "confidence":      0.87,
+            "probabilities":   {"legitimate": 0.13, "clickbait": 0.87},
+            "bounding_boxes":  [
+                { "class": "fake_download_button", "confidence": 0.87,
+                  "x": 0.12, "y": 0.45, "w": 0.08, "h": 0.03,
+                  "deceptive": true }
+            ],
+            "all_detections":  [...]   // includes neutral detections too
         }
+
+    Bounding box coordinates are NORMALIZED [0.0 – 1.0] relative to the
+    screenshot dimensions. The extension scales them to viewport CSS pixels.
     """
     data = request.get_json(force=True)
     if not data or "image" not in data:
         return jsonify({"error": "No image data provided"}), 400
 
-    image_b64 = data["image"]
-
-    # Decode base64 → PIL Image → NumPy RGB array
+    # ── Decode base64 image ──────────────────────────────
     try:
-        # Handle data URL prefix if present
+        image_b64 = data["image"]
         if "," in image_b64:
             image_b64 = image_b64.split(",")[1]
         image_bytes = base64.b64decode(image_b64)
         pil_image   = Image.open(io.BytesIO(image_bytes)).convert("RGB")
-        img_array   = np.array(pil_image)
-    except Exception as e:
-        return jsonify({"error": f"Failed to decode image: {str(e)}"}), 400
+        img_w, img_h = pil_image.size
+    except Exception as exc:
+        return jsonify({"error": f"Failed to decode image: {exc}"}), 400
 
-    # Preprocess
-    preprocessed = preprocess_pipeline_from_array(img_array)
-    tensor = (
-        torch.from_numpy(preprocessed.transpose(2, 0, 1))
-        .unsqueeze(0)
-        .to(DEVICE)
-    )
-
-    # Predict
+    # ── Run YOLO inference ───────────────────────────────
     model = get_model()
-    with torch.no_grad():
-        logits = model(tensor)
-        probs  = torch.softmax(logits, dim=-1).squeeze().cpu().numpy()
+    if model is None:
+        return jsonify({
+            "label":          "unknown",
+            "confidence":     0.0,
+            "probabilities":  {"legitimate": 0.0, "clickbait": 0.0},
+            "bounding_boxes": [],
+            "all_detections": [],
+            "warning":        "Model not trained yet. Run: python scripts/train_yolo.py",
+        })
 
-    predicted_class = int(np.argmax(probs))
-    confidence      = float(probs[predicted_class])
-    label           = CLASS_NAMES[predicted_class]
+    results = model.predict(pil_image, conf=CONF_THRESHOLD, verbose=False)
+
+    # ── Parse detections ─────────────────────────────────
+    all_detections  = []
+    deceptive_confs = []
+
+    if results and len(results[0].boxes) > 0:
+        boxes = results[0].boxes
+        for i in range(len(boxes)):
+            cls_id   = int(boxes.cls[i].item())
+            conf     = float(boxes.conf[i].item())
+            cls_name = model.names[cls_id]
+            x1, y1, x2, y2 = boxes.xyxy[i].tolist()
+
+            is_deceptive = cls_name in DECEPTIVE_CLASSES
+            detection = {
+                "class":      cls_name,
+                "confidence": round(conf, 3),
+                # Normalized [0,1] relative to screenshot dimensions
+                "x": round(x1 / img_w, 4),
+                "y": round(y1 / img_h, 4),
+                "w": round((x2 - x1) / img_w, 4),
+                "h": round((y2 - y1) / img_h, 4),
+                "deceptive":  is_deceptive,
+            }
+            all_detections.append(detection)
+            if is_deceptive:
+                deceptive_confs.append(conf)
+
+    # ── Page-level classification ─────────────────────────
+    if deceptive_confs:
+        label      = "clickbait"
+        confidence = round(float(max(deceptive_confs)), 3)
+    else:
+        label = "legitimate"
+        if not all_detections:
+            # YOLO found nothing — we cannot be certain; cap at 65%
+            confidence = 0.65
+        else:
+            # Only neutral elements (Buttons etc.) detected — reasonably clean
+            max_neutral = max(d["confidence"] for d in all_detections)
+            confidence  = round(min(0.82, 0.65 + max_neutral * 0.18), 3)
+
+    bounding_boxes = [d for d in all_detections if d["deceptive"]]
 
     return jsonify({
         "label":          label,
         "confidence":     confidence,
-        "probabilities":  {cls: float(p) for cls, p in zip(CLASS_NAMES, probs)},
-        "bounding_boxes": [],  # TODO: integrate object detection for precise box output
+        "probabilities":  {
+            "legitimate": round(1.0 - confidence, 3) if label == "clickbait" else confidence,
+            "clickbait":  confidence if label == "clickbait" else round(1.0 - confidence, 3),
+        },
+        "bounding_boxes": bounding_boxes,
+        "all_detections": all_detections,
     })
 
 
 @app.route("/health", methods=["GET"])
 def health():
-    """Health check endpoint."""
-    return jsonify({"status": "ok", "device": str(DEVICE)})
+    model_ready = YOLO_CHECKPOINT.exists()
+    return jsonify({
+        "status":      "ok",
+        "device":      str(DEVICE),
+        "model_ready": model_ready,
+    })
 
 
 @app.route("/", methods=["GET"])
 def index():
     return jsonify({
-        "service": "Clickbait Detector API",
+        "service": "Clickbait Detector API (YOLOv8)",
         "endpoints": {
-            "POST /analyze": "Send base64 screenshot, get label + confidence",
+            "POST /analyze": "Send base64 screenshot → label + bounding boxes",
             "GET  /health":  "Server health check",
         }
     })
@@ -132,6 +183,5 @@ def index():
 
 if __name__ == "__main__":
     print("🚀 Starting Clickbait Detector server on http://localhost:5000")
-    # Pre-load model at startup
     get_model()
     app.run(host="0.0.0.0", port=5000, debug=False)

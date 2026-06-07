@@ -55,3 +55,8 @@ runs/
 # ── Kaggle API key ────────────────────────────────────────────────────────────
 kaggle.json
 *.json.bak
+
+#data for training
+data/
+
+models/
