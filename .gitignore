@@ -25,6 +25,7 @@ data/raw/
 data/cleaned/
 data/annotated/
 data/processed/
+data/roboflow
 
 # ── Model Checkpoints ─────────────────────────────────────────────────────────
 models/checkpoints/*.pth
