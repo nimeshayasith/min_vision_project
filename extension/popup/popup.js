@@ -55,18 +55,27 @@ function renderResult(result) {
   if (bounding_boxes && bounding_boxes.length > 0) {
     probsContainer.style.display = "block";
 
+    const fakeCount = bounding_boxes.filter(b => b.type === "fake").length;
+    const realCount = bounding_boxes.length - fakeCount;
+
     const header = document.createElement("div");
     header.className   = "prob-row";
-    header.style.cssText = "font-weight:600;color:#e2e8f0;margin-bottom:4px;";
-    header.innerHTML = `<span>🎯 Detected Elements</span><span style="background:rgba(239,68,68,0.2);color:#fca5a5">${detection_count || bounding_boxes.length} found</span>`;
+    header.style.cssText = "font-weight:600;color:#e2e8f0;margin-bottom:4px;display:flex;justify-content:space-between;";
+    header.innerHTML = `<span>🎯 Elements</span>
+                        <div>
+                          <span style="background:rgba(239,68,68,0.2);color:#fca5a5;padding:2px 6px;border-radius:4px;font-size:11px;margin-right:4px;">${fakeCount} Fake</span>
+                          <span style="background:rgba(76,175,80,0.2);color:#86efac;padding:2px 6px;border-radius:4px;font-size:11px;">${realCount} Real</span>
+                        </div>`;
     probsContainer.appendChild(header);
 
     bounding_boxes.forEach((box) => {
-      const icon = CLASS_ICONS[box.class_name] || "⚠️";
+      const isFake = box.type === "fake";
+      const icon   = isFake ? (CLASS_ICONS[box.class_name] || "⚠️") : "✅";
+      const color  = isFake ? "#fca5a5" : "#86efac";
       const row  = document.createElement("div");
       row.className = "prob-row";
       row.innerHTML = `
-        <span>${icon} ${box.class_name || "Unknown"}</span>
+        <span style="color:${color}">${icon} ${box.class_name || "Unknown"}</span>
         <span>${((box.confidence || 0) * 100).toFixed(1)}%</span>
       `;
       probsContainer.appendChild(row);

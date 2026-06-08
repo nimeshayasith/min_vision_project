@@ -28,14 +28,14 @@ YOLO_MODEL   = CKPT_DIR / "yolo_clickbait.pt"
 
 CKPT_DIR.mkdir(parents=True, exist_ok=True)
 
-# ── Hyperparameters (GPU-optimised) ───────────────────────────────────────
+# ── Hyperparameters (CPU-optimised) ───────────────────────────────────────
 YOLO_TRAIN_CONFIG = {
-    "model":     "yolov8s.pt",   
+    "model":     "yolov8s.pt",   # Small: better accuracy than Nano, good balance for CPU
     "data":      str(DATA_YAML),
     "epochs":    150,
     "imgsz":     640,
-    "batch":     16,             # Increased batch size since GPU has faster VRAM
-    "device":    0,              # '0' tells PyTorch to use your primary Nvidia GPU
+    "batch":     4,              # Small batch for CPU RAM limits
+    "device":    "cpu",
     "workers":   0,              # Windows: must be 0 to avoid multiprocessing issues
     "patience":  15,             # Early stop if no improvement for 15 epochs
     "lr0":       0.01,
@@ -63,7 +63,7 @@ def train():
     print("=" * 60)
     print(f"  Dataset : {DATA_YAML}")
     print(f"  Output  : {YOLO_MODEL}")
-    print(f"  Device  : NVIDIA GPU (device 0)")
+    print(f"  Device  : CPU")
     print(f"  Epochs  : {YOLO_TRAIN_CONFIG['epochs']}")
     print("=" * 60)
 
@@ -103,10 +103,3 @@ def train():
 
 if __name__ == "__main__":
     train()
-
-
-
-# python -m src.training.train_yolo
-
-# pip uninstall torch torchvision
-# pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118

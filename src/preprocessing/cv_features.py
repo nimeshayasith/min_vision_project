@@ -159,36 +159,98 @@ def _compute_shape_features(x: int, y: int, w: int, h: int,
     }
 
 
+def _get_dominant_colors(img_bgr: np.ndarray, k: int = 3) -> np.ndarray:
+    """Calculate dominant colors of the entire page using K-Means."""
+    h, w = img_bgr.shape[:2]
+    # Resize for speed
+    scale = 200 / max(h, w, 1)
+    small_img = cv2.resize(img_bgr, (0, 0), fx=scale, fy=scale)
+    lab = cv2.cvtColor(small_img, cv2.COLOR_BGR2LAB)
+    
+    pixels = np.float32(lab.reshape(-1, 3))
+    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
+    _, _, centers = cv2.kmeans(pixels, k, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
+    return centers
+
+
+def _compute_color_outlier(crop_bgr: np.ndarray, dominant_colors_lab: np.ndarray) -> dict:
+    """Check if the button's color is an outlier compared to the page's dominant colors."""
+    if dominant_colors_lab is None or len(dominant_colors_lab) == 0:
+        return {"color_outlier_distance": 0.0}
+        
+    lab = cv2.cvtColor(crop_bgr, cv2.COLOR_BGR2LAB)
+    mean_color = np.mean(lab.reshape(-1, 3), axis=0)
+    
+    # Calculate min Euclidean distance to any dominant color
+    distances = np.linalg.norm(dominant_colors_lab - mean_color, axis=1)
+    min_dist = float(np.min(distances))
+    
+    # Normalize (max distance in LAB is roughly ~255)
+    normalized_dist = min(min_dist / 100.0, 1.0)
+    return {"color_outlier_distance": normalized_dist}
+
+
+def _compute_harris_corners(crop_bgr: np.ndarray) -> dict:
+    """Measure internal complexity using Harris Corner Detection."""
+    gray = cv2.cvtColor(crop_bgr, cv2.COLOR_BGR2GRAY)
+    gray = np.float32(gray)
+    
+    dst = cv2.cornerHarris(gray, 2, 3, 0.04)
+    
+    # Threshold for an optimal value
+    corner_count = int(np.sum(dst > 0.01 * dst.max()))
+    area = max(gray.shape[0] * gray.shape[1], 1)
+    corner_density = min((corner_count / area) * 100.0, 1.0)
+    
+    return {"corner_density": corner_density}
+
+
+def _compute_expanded_roi_features(img_bgr: np.ndarray, x: int, y: int, w: int, h: int) -> dict:
+    """Analyze the immediate surroundings of the button for clutter (ad space)."""
+    img_h, img_w = img_bgr.shape[:2]
+    margin = 30
+    
+    x1 = max(0, x - margin)
+    y1 = max(0, y - margin)
+    x2 = min(img_w, x + w + margin)
+    y2 = min(img_h, y + h + margin)
+    
+    roi = img_bgr[y1:y2, x1:x2]
+    if roi.size == 0:
+        return {"surrounding_edge_density": 0.0}
+        
+    gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+    edges = cv2.Canny(gray, 50, 150)
+    
+    # Mask out the actual button inside the ROI so we only measure surroundings
+    bx1 = x - x1
+    by1 = y - y1
+    bx2 = bx1 + w
+    by2 = by1 + h
+    edges[max(0, by1):min(roi.shape[0], by2), max(0, bx1):min(roi.shape[1], bx2)] = 0
+    
+    surrounding_area = max((roi.shape[0] * roi.shape[1]) - (w * h), 1)
+    edge_density = float(np.sum(edges > 0)) / surrounding_area
+    
+    # Normalize density (0.1 is usually quite dense)
+    return {"surrounding_edge_density": min(edge_density * 5.0, 1.0)}
+
+
 def compute_clickbait_visual_score(
+    img_bgr: np.ndarray,
     crop_bgr: np.ndarray,
     x: int, y: int, w: int, h: int,
-    img_w: int, img_h: int,
     class_name: str = "Buttons",
+    dominant_colors_lab: np.ndarray = None,
 ) -> tuple[float, dict]:
     """
     Compute a holistic visual clickbait score for a detected region.
-
-    This replicates how a human judges a UI element:
-    - Is it bright and alarming in color?
-    - Is it high-contrast and attention-grabbing?
-    - Is it unusually large for what it is?
-    - Is it placed where you can't miss it?
-    - Is it visually cluttered like an ad?
-
-    Args:
-        crop_bgr:    Cropped BGR image of the detected region
-        x,y,w,h:     Bounding box in full-image pixel coordinates
-        img_w,img_h: Full screenshot dimensions
-        class_name:  Detected class from YOLO
-
-    Returns:
-        score:    Float in [0.0, 1.0] — higher = more likely clickbait
-        features: Dict of individual feature values (for debugging/logging)
+    Uses basic heuristics + K-Means, Harris Corners, and Expanded ROI.
     """
     if crop_bgr is None or crop_bgr.size == 0:
         return 0.0, {}
 
-    # Ensure minimum crop size for meaningful analysis
+    img_h, img_w = img_bgr.shape[:2]
     min_dim = 10
     if crop_bgr.shape[0] < min_dim or crop_bgr.shape[1] < min_dim:
         return 0.5, {}   # Give benefit of the doubt for tiny regions
@@ -198,27 +260,33 @@ def compute_clickbait_visual_score(
         contrast_feats = _compute_contrast_features(crop_bgr)
         edge_feats    = _compute_edge_features(crop_bgr)
         shape_feats   = _compute_shape_features(x, y, w, h, img_w, img_h)
+        
+        # New Advanced Features
+        outlier_feats = _compute_color_outlier(crop_bgr, dominant_colors_lab)
+        corner_feats  = _compute_harris_corners(crop_bgr)
+        roi_feats     = _compute_expanded_roi_features(img_bgr, x, y, w, h)
+        
     except Exception as e:
         print(f"[cv_features] Error computing features: {e}")
         return 0.5, {}
 
-    all_features = {**color_feats, **contrast_feats, **edge_feats, **shape_feats}
+    all_features = {**color_feats, **contrast_feats, **edge_feats, **shape_feats,
+                    **outlier_feats, **corner_feats, **roi_feats}
 
     # ── Weighted Score Computation ───────────────────────────────────────
-    # Each feature contributes to the final score with a calibrated weight.
-    # These weights encode human visual judgment about what makes something
-    # look like clickbait.
-
     score = (
-        color_feats["alert_color_ratio"]         * 0.20 +   # Red/orange = alarm
-        color_feats["mean_saturation"]           * 0.15 +   # Vivid = artificial
-        contrast_feats["contrast_std"]           * 0.15 +   # High contrast = designed
-        edge_feats["edge_density"]               * 0.10 +   # Cluttered = ad
-        shape_feats["horizontal_centrality"]     * 0.10 +   # Centered = bait
-        shape_feats["vertical_prominence"]       * 0.10 +   # Top-of-page = prominent
-        min(shape_feats["area_ratio"] * 10, 1.0) * 0.10 +  # Oversized = suspicious
-        shape_feats["is_button_like"]            * 0.05 +   # Button shape
-        shape_feats["is_banner_like"]            * 0.05     # Banner shape
+        color_feats["alert_color_ratio"]         * 0.10 +   # Red/orange
+        color_feats["mean_saturation"]           * 0.10 +   # Vivid
+        contrast_feats["contrast_std"]           * 0.10 +   # High contrast
+        edge_feats["edge_density"]               * 0.05 +   # Cluttered
+        shape_feats["horizontal_centrality"]     * 0.05 +   # Centered
+        shape_feats["vertical_prominence"]       * 0.05 +   # Top-of-page
+        min(shape_feats["area_ratio"] * 10, 1.0) * 0.05 +   # Oversized
+        
+        # New Feature Weights
+        outlier_feats["color_outlier_distance"]  * 0.20 +   # Doesn't match page theme!
+        corner_feats["corner_density"]           * 0.15 +   # High internal complexity (icons)
+        roi_feats["surrounding_edge_density"]    * 0.15     # Cluttered surrounding context
     )
 
     # Apply class-based multiplier
@@ -231,22 +299,16 @@ def compute_clickbait_visual_score(
 def filter_clickbait_boxes(
     yolo_boxes: list[dict],
     img_bgr: np.ndarray,
-    min_cv_score: float = 0.15,
 ) -> list[dict]:
     """
-    Given YOLO detection results, apply CV feature scoring to filter
-    and enrich the bounding boxes.
-
-    Args:
-        yolo_boxes:   List of dicts with keys: x,y,w,h,confidence,class_name
-        img_bgr:      Full BGR screenshot image
-        min_cv_score: Minimum CV visual score to keep a box (default: 0.15)
-
-    Returns:
-        Filtered list of boxes with added 'cv_score' and enriched 'confidence'
+    Given YOLO detection results, apply advanced CV feature scoring to
+    classify boxes as 'fake' or 'real'.
     """
     img_h, img_w = img_bgr.shape[:2]
     filtered = []
+    
+    # Calculate dominant colors once for the whole page
+    dominant_colors_lab = _get_dominant_colors(img_bgr, k=3)
 
     for box in yolo_boxes:
         x, y, w, h = int(box["x"]), int(box["y"]), int(box["w"]), int(box["h"])
@@ -263,23 +325,25 @@ def filter_clickbait_boxes(
 
         crop = img_bgr[y:y2, x:x2]
         cv_score, features = compute_clickbait_visual_score(
-            crop, x, y, (x2 - x), (y2 - y), img_w, img_h, class_name
+            img_bgr, crop, x, y, (x2 - x), (y2 - y), class_name, dominant_colors_lab
         )
 
-        if cv_score >= min_cv_score:
-            # Combine YOLO confidence with CV score for final confidence
-            yolo_conf    = float(box.get("confidence", 0.5))
-            final_conf   = (yolo_conf * 0.7 + cv_score * 0.3)
+        yolo_conf  = float(box.get("confidence", 0.5))
+        final_conf = (yolo_conf * 0.6 + cv_score * 0.4)
+        
+        # Classification Threshold
+        element_type = "fake" if cv_score > 0.40 else "real"
 
-            filtered.append({
-                "x":          x,
-                "y":          y,
-                "w":          x2 - x,
-                "h":          y2 - y,
-                "confidence": round(final_conf, 3),
-                "cv_score":   round(cv_score, 3),
-                "class_name": class_name,
-                "features":   features,   # For debugging
-            })
+        filtered.append({
+            "x":          x,
+            "y":          y,
+            "w":          x2 - x,
+            "h":          y2 - y,
+            "confidence": round(final_conf, 3),
+            "cv_score":   round(cv_score, 3),
+            "class_name": class_name,
+            "type":       element_type,
+            "features":   features,
+        })
 
     return filtered

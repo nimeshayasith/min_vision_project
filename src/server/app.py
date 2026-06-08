@@ -144,7 +144,6 @@ def analyze():
     validated_boxes = filter_clickbait_boxes(
         yolo_boxes=raw_boxes,
         img_bgr=img_bgr,
-        min_cv_score=0.10,   # Low threshold — let YOLO confidence be the main gate
     )
 
     # ── Scale down by DPR for viewport coordinate mapping ─────────────────
@@ -158,6 +157,7 @@ def analyze():
             "confidence": box["confidence"],
             "class_name": box["class_name"],
             "cv_score":   box["cv_score"],
+            "type":       box["type"],
         })
 
     # ── Determine overall page label ──────────────────────────────────────

@@ -19,39 +19,8 @@ const CLASS_DISPLAY_NAMES = {
   "fake_download_button": "⬇️ Fake Download",
 };
 
-(async () => {
-  try {
-    chrome.runtime.sendMessage({ action: "captureTab" }, async (response) => {
-      if (chrome.runtime.lastError) {
-        console.error("[ClickbaitDetector]", chrome.runtime.lastError.message);
-        return;
-      }
-      if (!response || !response.imageData) return;
-
-      // Send screenshot to Flask backend
-      let result;
-      try {
-        const res = await fetch(BACKEND_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            image: response.imageData,
-            url:   window.location.href,
-            dpr:   window.devicePixelRatio,
-          }),
-        });
-        result = await res.json();
-      } catch (fetchErr) {
-        console.warn("[ClickbaitDetector] Backend unreachable:", fetchErr.message);
-        return;
-      }
-
-      handleDetectionResult(result);
-    });
-  } catch (error) {
-    console.error("[ClickbaitDetector] Unexpected error:", error);
-  }
-})();
+// Automatic scanning on page load is disabled due to Chrome's activeTab security policy.
+// The scan is now manually triggered via the extension popup button.
 
 
 function handleDetectionResult(data) {
@@ -60,8 +29,11 @@ function handleDetectionResult(data) {
   // Save result for popup
   chrome.storage.session.set({ lastResult: data });
 
-  if (label === "clickbait" && bounding_boxes && bounding_boxes.length > 0) {
-    showAlertBanner(confidence, detection_count);
+  if (bounding_boxes && bounding_boxes.length > 0) {
+    const fakeCount = bounding_boxes.filter(b => b.type === "fake").length;
+    if (fakeCount > 0) {
+      showAlertBanner(confidence, fakeCount);
+    }
     drawClickbaitBoxes(bounding_boxes);
   }
 }
@@ -112,8 +84,14 @@ function drawClickbaitBoxes(boxes) {
 
   boxes.forEach((box, idx) => {
     const className    = box.class_name || "Unknown";
-    const displayName  = CLASS_DISPLAY_NAMES[className] || `⚠️ ${className}`;
+    const isFake       = box.type === "fake";
+    const displayName  = isFake ? (CLASS_DISPLAY_NAMES[className] || `⚠️ ${className}`) : "✅ Real Element";
     const confPct      = ((box.confidence || 0) * 100).toFixed(0);
+    
+    // Theme colors based on type
+    const colorHex  = isFake ? "#e53935" : "#4caf50";
+    const colorRgba = isFake ? "rgba(229, 57, 53," : "rgba(76, 175, 80,";
+    const anim      = isFake ? "clickbait-pulse 2s ease-in-out infinite" : "none";
 
     // Outer wrapper
     const wrapper = document.createElement("div");
@@ -128,17 +106,17 @@ function drawClickbaitBoxes(boxes) {
       pointer-events: none;
     `;
 
-    // The red rounded border box
+    // The border box
     const borderBox = document.createElement("div");
     borderBox.style.cssText = `
       position: absolute;
       inset: 0;
-      border: 3px solid #e53935;
+      border: 3px solid ${colorHex};
       border-radius: 8px;
-      background: rgba(229, 57, 53, 0.06);
-      box-shadow: 0 0 0 1px rgba(229, 57, 53, 0.3),
-                  inset 0 0 0 1px rgba(229, 57, 53, 0.1);
-      animation: clickbait-pulse 2s ease-in-out infinite;
+      background: ${colorRgba} 0.06);
+      box-shadow: 0 0 0 1px ${colorRgba} 0.3),
+                  inset 0 0 0 1px ${colorRgba} 0.1);
+      animation: ${anim};
     `;
 
     // Label badge at the top of the box
@@ -147,7 +125,7 @@ function drawClickbaitBoxes(boxes) {
       position: absolute;
       top: -26px;
       left: 0px;
-      background: #e53935;
+      background: ${colorHex};
       color: white;
       padding: 3px 8px;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
