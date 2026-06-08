@@ -39,9 +39,9 @@ def get_model() -> ClickbaitDetector:
         _model = ClickbaitDetector(backbone=CONFIG["backbone"])
         if ckpt.exists():
             _model.load_state_dict(torch.load(str(ckpt), map_location=DEVICE))
-            print(f"✅ Model loaded from {ckpt}")
+            print(f"Model loaded from {ckpt}")
         else:
-            print(f"⚠️  No checkpoint found at {ckpt}. Using untrained model for testing.")
+            print(f"No checkpoint found at {ckpt}. Using untrained model for testing.")
         _model.to(DEVICE)
         _model.eval()
     return _model
@@ -131,7 +131,7 @@ def index():
 
 
 if __name__ == "__main__":
-    print("🚀 Starting Clickbait Detector server on http://localhost:5000")
+    print("Starting Clickbait Detector server on http://localhost:5000")
     # Pre-load model at startup
     get_model()
     app.run(host="0.0.0.0", port=5000, debug=False)
