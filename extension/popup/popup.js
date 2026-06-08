@@ -80,6 +80,18 @@ scanBtn.addEventListener("click", async () => {
         const result = await res.json();
         chrome.storage.session.set({ lastResult: result });
         renderResult(result);
+
+        // Send all detected elements to content.js to draw boxes on the page
+        const boxes = result.all_detections && result.all_detections.length > 0
+          ? result.all_detections
+          : (result.bounding_boxes || []);
+
+        if (boxes.length > 0) {
+          chrome.tabs.sendMessage(tab.id, { action: "drawBoxes", boxes }, () => {
+            void chrome.runtime.lastError; // suppress "Receiving end does not exist" on restricted pages
+          });
+          confLabel.textContent = `Confidence: ${(result.confidence * 100).toFixed(1)}%  — highlighting ${boxes.length} element(s) for 5s`;
+        }
       } catch (e) {
         labelBadge.textContent = "Server offline";
         confLabel.textContent = "Make sure Flask server is running (python -m src.server.app)";
