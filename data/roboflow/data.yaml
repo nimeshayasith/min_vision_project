@@ -1,4 +1,4 @@
-path: e:/7th Sem/EC7205 - Computer Vision and Image Processing/Project/Code/min_vision_project/data/roboflow
+path: f:/CAMPUS/Academic Semester 7/EC7205EE7204 Image processing and Computer Vision/Mini Project/min_vision_project/data/roboflow
 train: train/images
 val: valid/images
 test: test/images
