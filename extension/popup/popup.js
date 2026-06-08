@@ -74,10 +74,22 @@ function renderResult(result) {
       const color  = isFake ? "#fca5a5" : "#86efac";
       const row  = document.createElement("div");
       row.className = "prob-row";
+      row.style.cursor = "pointer";
+      row.style.transition = "background 0.2s";
+      row.title = "Click to locate on page";
+      row.onmouseover = () => row.style.background = "rgba(255,255,255,0.1)";
+      row.onmouseout  = () => row.style.background = "transparent";
       row.innerHTML = `
         <span style="color:${color}">${icon} ${box.class_name || "Unknown"}</span>
         <span>${((box.confidence || 0) * 100).toFixed(1)}%</span>
       `;
+      
+      row.onclick = () => {
+        chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
+          chrome.tabs.sendMessage(tab.id, { action: "scrollToBox", box: box }).catch(() => {});
+        });
+      };
+      
       probsContainer.appendChild(row);
     });
   } else if (label === "clean") {
