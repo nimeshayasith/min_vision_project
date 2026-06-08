@@ -3,7 +3,7 @@
   "name": "Clickbait Detector",
   "version": "1.0",
   "description": "Detects deceptive UI elements on websites using computer vision.",
-  "permissions": ["activeTab", "scripting", "storage"],
+  "permissions": ["activeTab", "tabs", "scripting", "storage"],
   "host_permissions": ["<all_urls>"],
   "background": {
     "service_worker": "background.js"

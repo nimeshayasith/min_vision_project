@@ -6,54 +6,84 @@
 
 const BACKEND_URL = "http://localhost:5000/analyze";
 
+// Wrap sendMessage as a promise and retry when the service worker is still waking up.
+function sendMessage(msg, { retries = 3, retryDelay = 600 } = {}) {
+  return new Promise((resolve, reject) => {
+    const attempt = (remaining) => {
+      chrome.runtime.sendMessage(msg, (response) => {
+        const err = chrome.runtime.lastError;
+        if (err) {
+          if (remaining > 0 && err.message.includes("Receiving end does not exist")) {
+            setTimeout(() => attempt(remaining - 1), retryDelay);
+          } else {
+            reject(new Error(err.message));
+          }
+        } else {
+          resolve(response);
+        }
+      });
+    };
+    attempt(retries);
+  });
+}
+
 (async () => {
   try {
-    // Ask background service worker to capture the current tab
-    chrome.runtime.sendMessage({ action: "captureTab" }, async (response) => {
-      if (chrome.runtime.lastError) {
-        console.error("[ClickbaitDetector]", chrome.runtime.lastError.message);
-        return;
-      }
-      if (!response || !response.imageData) return;
+    const response = await sendMessage({ action: "captureTab" });
+    if (!response || !response.imageData) return;
 
-      // Send screenshot to Flask backend
-      let result;
-      try {
-        const res = await fetch(BACKEND_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            image: response.imageData,  // base64 PNG data URL
-            url: window.location.href,
-          }),
-        });
-        result = await res.json();
-      } catch (fetchErr) {
-        console.warn("[ClickbaitDetector] Backend unreachable:", fetchErr.message);
-        return;
-      }
+    let result;
+    try {
+      const res = await fetch(BACKEND_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          image: response.imageData,
+          url: window.location.href,
+        }),
+      });
+      result = await res.json();
+    } catch (fetchErr) {
+      console.warn("[ClickbaitDetector] Backend unreachable:", fetchErr.message);
+      return;
+    }
 
-      handleDetectionResult(result);
-    });
+    handleDetectionResult(result);
   } catch (error) {
-    console.error("[ClickbaitDetector] Unexpected error:", error);
+    // Silently ignore restricted pages (chrome://, about:, etc.)
+    if (!error.message.includes("Cannot access") && !error.message.includes("not in effect")) {
+      console.error("[ClickbaitDetector] Unexpected error:", error);
+    }
   }
 })();
 
 
 function handleDetectionResult(data) {
-  const { label, confidence, bounding_boxes } = data;
+  const { label, confidence, all_detections, bounding_boxes } = data;
 
   // Save result for popup
   chrome.storage.session.set({ lastResult: data });
 
   if (label === "clickbait" || label === "phishing") {
     showAlertBanner(label, confidence);
-    if (bounding_boxes && bounding_boxes.length > 0) {
-      drawBoundingBoxes(bounding_boxes);
-    }
+  }
+
+  // Draw boxes for ALL detected elements (deceptive = red, neutral = blue)
+  const boxes = all_detections && all_detections.length > 0
+    ? all_detections
+    : (bounding_boxes || []);
+  if (boxes.length > 0) {
+    drawBoundingBoxes(boxes);
   }
 }
+
+// Listen for draw requests from popup.js (Re-scan button)
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.action === "drawBoxes") {
+    drawBoundingBoxes(message.boxes || []);
+    sendResponse({ ok: true });
+  }
+});
 
 
 function showAlertBanner(label, confidence) {
@@ -91,58 +121,90 @@ function showAlertBanner(label, confidence) {
 }
 
 
+// Border color per detected class
+const CLASS_COLORS = {
+  fake_download_button: "#d32f2f",  // red   — deceptive
+  ad_banner:            "#d32f2f",  // red   — deceptive
+  close_button:         "#e65100",  // orange — potentially deceptive
+  Buttons:              "#1565c0",  // blue  — neutral
+  "Computer-vision":    "#2e7d32",  // green — neutral
+};
+
+const CLASS_LABELS = {
+  fake_download_button: "⚠ Fake Download",
+  ad_banner:            "⚠ Deceptive Ad",
+  close_button:         "⚠ Fake Close",
+  Buttons:              "Button",
+  "Computer-vision":    "UI Element",
+};
+
+function clearBoundingBoxes() {
+  document.querySelectorAll(".cd-detection-box").forEach(el => el.remove());
+}
+
 function drawBoundingBoxes(boxes) {
-  // Server returns normalized coords [0,1] relative to the screenshot.
-  // The screenshot covers the visible viewport, so we scale to CSS pixels.
+  // Remove any boxes already on screen before drawing new ones
+  clearBoundingBoxes();
+
+  if (!boxes || boxes.length === 0) return;
+
+  // Server returns normalized [0,1] coords — scale to viewport CSS pixels
   const vw = window.innerWidth;
   const vh = window.innerHeight;
 
-  const labelMap = {
-    fake_download_button: "Fake Download",
-    ad_banner:            "Deceptive Ad",
-    close_button:         "Fake Close",
-  };
-
-  boxes.forEach((box, idx) => {
+  boxes.forEach((box) => {
     const pxX = Math.round(box.x * vw);
     const pxY = Math.round(box.y * vh);
     const pxW = Math.round(box.w * vw);
     const pxH = Math.round(box.h * vh);
-    const pct = Math.round((box.confidence || 0) * 100);
-    const displayLabel = labelMap[box.class] || box.class;
+    const pct   = Math.round((box.confidence || 0) * 100);
+    const color = CLASS_COLORS[box.class] || "#7b1fa2";
+    const displayLabel = CLASS_LABELS[box.class] || box.class;
 
-    // Outer box overlay
+    // Box overlay
     const overlay = document.createElement("div");
-    overlay.id = `clickbait-box-${idx}`;
+    overlay.className = "cd-detection-box";
     overlay.style.cssText = `
       position: fixed;
       left: ${pxX}px; top: ${pxY}px;
       width: ${pxW}px; height: ${pxH}px;
-      border: 3px solid #d32f2f; z-index: 2147483646;
+      border: 3px solid ${color};
+      z-index: 2147483646;
       pointer-events: none;
-      background: rgba(211, 47, 47, 0.08);
-      border-radius: 2px;
+      background: ${color}18;
+      border-radius: 3px;
       box-sizing: border-box;
+      opacity: 1;
+      transition: opacity 0.6s ease;
     `;
 
     // Label chip above the box
-    const label = document.createElement("div");
-    label.style.cssText = `
+    const chip = document.createElement("div");
+    chip.style.cssText = `
       position: absolute;
-      top: -24px; left: -3px;
-      background: #d32f2f;
+      top: -26px; left: -3px;
+      background: ${color};
       color: white;
       font-size: 11px;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      font-weight: 600;
-      padding: 2px 6px;
+      font-weight: 700;
+      padding: 2px 7px;
       border-radius: 3px 3px 0 0;
       white-space: nowrap;
       pointer-events: none;
+      letter-spacing: 0.2px;
     `;
-    label.textContent = `⚠ ${displayLabel} (${pct}%)`;
-    overlay.appendChild(label);
-
+    chip.textContent = `${displayLabel} ${pct}%`;
+    overlay.appendChild(chip);
     document.body.appendChild(overlay);
   });
+
+  // Fade out at 4.5s, remove at 5s
+  setTimeout(() => {
+    document.querySelectorAll(".cd-detection-box").forEach(el => {
+      el.style.opacity = "0";
+    });
+  }, 4500);
+
+  setTimeout(clearBoundingBoxes, 5000);
 }
