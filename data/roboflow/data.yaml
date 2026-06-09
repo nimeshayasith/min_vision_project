@@ -3,8 +3,8 @@ train: train/images
 val: valid/images
 test: test/images
 
-nc: 5
-names: ['Buttons', 'Computer-vision', 'ad_banner', 'close_button', 'fake_download_button']
+nc: 1
+names: ['fake_button']
 
 roboflow:
   workspace: nimeshas-workspace-h5qjz

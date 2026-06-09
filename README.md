@@ -1,9 +1,23 @@
 # min_vision_project
 
+## Train & Evaluate Model
+
+**Train Model:**
+```bash
+python -m src.training.train_yolo
+```
+
+**Get Evaluation Metrics:**
+```bash
+python -m src.training.evaluate_yolo
+```
+
 ## Quick: Load the Chrome extension & run the demo
 
 1. Install dependencies
-```pip install -r requirements.txt```
+```bash
+pip install -r requirements.txt
+```
 
 2. Start the Flask backend (loads the trained model):
 

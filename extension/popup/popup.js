@@ -14,11 +14,7 @@ const scanBtn        = document.getElementById("scan-btn");
 
 // Class display names
 const CLASS_ICONS = {
-  "Buttons":              "⚠️",
-  "Computer-vision":      "🎯",
-  "ad_banner":            "📢",
-  "close_button":         "❌",
-  "fake_download_button": "⬇️",
+  "fake_button": "⚠️",
 };
 
 const BADGE_CLASS = {

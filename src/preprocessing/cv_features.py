@@ -26,17 +26,7 @@ import cv2
 import numpy as np
 
 
-# ── Class metadata: visual weight for clickbait scoring ──
-CLASS_CLICKBAIT_WEIGHT = {
-    "Buttons":          0.7,   # Generic buttons — moderate risk
-    "Computer-vision":  0.8,   # Deceptive visual elements — high risk
-    "ad_banner":        0.9,   # Ad banners — very high risk
-    "close_button":     0.6,   # Close buttons — moderate (may be fake)
-    "fake_download_button": 1.0,  # Fake downloads — highest risk
-}
-
-CLASS_NAMES = ['Buttons', 'Computer-vision', 'ad_banner',
-               'close_button', 'fake_download_button']
+CLASS_NAMES = ['fake_button']
 
 
 # ── Color ranges for "alert colors" in HSV ──
@@ -289,8 +279,8 @@ def compute_clickbait_visual_score(
         roi_feats["surrounding_edge_density"]    * 0.15     # Cluttered surrounding context
     )
 
-    # Apply class-based multiplier
-    class_weight = CLASS_CLICKBAIT_WEIGHT.get(class_name, 0.7)
+    # Since we merged all classes into 'fake_button', all detections get a baseline weight of 1.0
+    class_weight = 1.0
     score = min(score * class_weight * 1.5, 1.0)   # Scale up, cap at 1.0
 
     return float(score), all_features

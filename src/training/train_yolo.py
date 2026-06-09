@@ -32,8 +32,8 @@ CKPT_DIR.mkdir(parents=True, exist_ok=True)
 YOLO_TRAIN_CONFIG = {
     "model":     "yolov8s.pt",   # Small: better accuracy than Nano, good balance for CPU
     "data":      str(DATA_YAML),
-    "epochs":    150,
-    "imgsz":     640,
+    "epochs":    60,
+    "imgsz":     1024,           # Increased from 640 to prevent small buttons from disappearing
     "batch":     4,              # Small batch for CPU RAM limits
     "device":    "cpu",
     "workers":   0,              # Windows: must be 0 to avoid multiprocessing issues
@@ -43,11 +43,11 @@ YOLO_TRAIN_CONFIG = {
     "mosaic":    1.0,            # Data augmentation: mosaic
     "flipud":    0.0,
     "fliplr":    0.5,
-    "degrees":   5.0,            # Slight rotation augmentation
-    "scale":     0.3,            # Scale jitter
-    "hsv_h":     0.015,          # Hue augmentation (color variation)
-    "hsv_s":     0.7,            # Saturation augmentation
-    "hsv_v":     0.4,            # Value/brightness augmentation
+    "degrees":   0.0,            # Removed rotation (UI elements are strictly horizontal)
+    "scale":     0.5,            # Increased to teach the model to handle different button sizes
+    "hsv_h":     0.1,            # Aggressive Hue shifts so model learns shapes, not just green/red
+    "hsv_s":     0.9,            # Aggressive Saturation shifts
+    "hsv_v":     0.6,            # Aggressive Brightness shifts
     "conf":      0.25,
     "iou":       0.5,
     "project":   str(CKPT_DIR / "yolo_runs"),

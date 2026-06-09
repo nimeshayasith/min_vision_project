@@ -12,11 +12,7 @@ const BACKEND_URL = "http://localhost:5000/analyze";
 
 // Class label → display name mapping
 const CLASS_DISPLAY_NAMES = {
-  "Buttons":              "⚠️ Deceptive Button",
-  "Computer-vision":      "🎯 Deceptive Element",
-  "ad_banner":            "📢 Ad Banner",
-  "close_button":         "❌ Fake Close Button",
-  "fake_download_button": "⬇️ Fake Download",
+  "fake_button": "⚠️ Deceptive UI",
 };
 
 // Automatic scanning on page load is disabled due to Chrome's activeTab security policy.
