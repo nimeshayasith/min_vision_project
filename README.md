@@ -48,3 +48,6 @@ This project uses a two-stage pipeline to detect deceptive UI:
      - **Page-Level Color Outliers (K-Means Clustering):** Extracts the 3 dominant colors of the website. If a button's color is a massive Euclidean outlier in the LAB color space, it is flagged as visually disruptive.
      - **Internal Complexity (Harris Corner Detection):** Counts the corners inside the button. Fake buttons pack high complexity (icons, badges), resulting in dense corner maps compared to flat real buttons.
      - **Contrast & Saturation (CLAHE / HSV):** Measures local contrast and vividness to detect attention-grabbing tactics.
+
+
+     yolo dataset- https://app.roboflow.com/join/eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ3b3Jrc3BhY2VJZCI6Im5BbTB4Vno5Qm9XWkpWc0t0eWwzZmg3SmVSdDEiLCJyb2xlIjoib3duZXIiLCJpbnZpdGVyIjoibmltZXNoYXlhc2l0aEBnbWFpbC5jb20iLCJpYXQiOjE3ODA1NjE5NTh9.NJ1vhemCN0rZWt6RHJvbJvHM-WqmnTViryljDIbsyQc
