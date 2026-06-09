@@ -1,4 +1,4 @@
-path: f:/CAMPUS/Academic Semester 7/EC7205EE7204 Image processing and Computer Vision/Mini Project/min_vision_project/data/roboflow
+path: /home/sdvn_cluster_timing/Downloads/min_vision_project/data/roboflow
 train: train/images
 val: valid/images
 test: test/images

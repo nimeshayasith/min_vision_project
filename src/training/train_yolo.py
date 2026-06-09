@@ -18,7 +18,11 @@ Run:
 """
 
 from pathlib import Path
+import torch
 from ultralytics import YOLO
+
+# ── Device ──────────────────────────────────────────────────────────────────
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 # ── Paths ──────────────────────────────────────────────────────────────────
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -28,42 +32,48 @@ YOLO_MODEL   = CKPT_DIR / "yolo_clickbait.pt"
 
 CKPT_DIR.mkdir(parents=True, exist_ok=True)
 
-# ── Hyperparameters (CPU-optimised) ───────────────────────────────────────
+# ── Hyperparameters (GPU-aware) ─────────────────────────────────────────
 YOLO_TRAIN_CONFIG = {
-    "model":     "yolov8s.pt",   # Small: better accuracy than Nano, good balance for CPU
-    "data":      str(DATA_YAML),
-    "epochs":    60,
-    "imgsz":     1024,           # Increased from 640 to prevent small buttons from disappearing
-    "batch":     4,              # Small batch for CPU RAM limits
-    "device":    "cpu",
-    "workers":   0,              # Windows: must be 0 to avoid multiprocessing issues
-    "patience":  15,             # Early stop if no improvement for 15 epochs
-    "lr0":       0.01,
-    "lrf":       0.01,
-    "mosaic":    1.0,            # Data augmentation: mosaic
-    "flipud":    0.0,
-    "fliplr":    0.5,
-    "degrees":   0.0,            # Removed rotation (UI elements are strictly horizontal)
-    "scale":     0.5,            # Increased to teach the model to handle different button sizes
-    "hsv_h":     0.1,            # Aggressive Hue shifts so model learns shapes, not just green/red
-    "hsv_s":     0.9,            # Aggressive Saturation shifts
-    "hsv_v":     0.6,            # Aggressive Brightness shifts
-    "conf":      0.25,
-    "iou":       0.5,
-    "project":   str(CKPT_DIR / "yolo_runs"),
-    "name":      "clickbait_detector",
-    "exist_ok":  True,
-    "verbose":   True,
+    "model":         "yolov8m.pt",   # Larger model for better recall and detection quality
+    "data":          str(DATA_YAML),
+    "epochs":        100,              # Full long training
+    "imgsz":         1024,             # Preserve small UI elements
+    "batch":         8,                # Increase batch if GPU memory allows
+    "device":        0,
+    "workers":       8,                # More workers for faster loading on Linux
+    "patience":      20,
+    "lr0":           0.01,
+    "lrf":           0.1,
+    "warmup_epochs": 3,
+    "freeze":        10,               # Freeze backbone for first 10 epochs
+    "augment":       True,
+    "auto_augment":  "randaugment",
+    "mosaic":        1.0,
+    "copy_paste":    0.0,
+    "mixup":         0.0,
+    "flipud":        0.0,
+    "fliplr":        0.5,
+    "degrees":       0.0,
+    "scale":         0.5,
+    "hsv_h":         0.1,
+    "hsv_s":         0.9,
+    "hsv_v":         0.6,
+    "conf":          0.15,
+    "iou":           0.5,
+    "project":       str(CKPT_DIR / "yolo_runs"),
+    "name":          "clickbait_detector",
+    "exist_ok":      True,
+    "verbose":       True,
 }
 
 
 def train():
     print("=" * 60)
-    print("  YOLOv8n Clickbait Element Detector — Training")
+    print("  YOLOv8 Clickbait Element Detector — Training")
     print("=" * 60)
     print(f"  Dataset : {DATA_YAML}")
     print(f"  Output  : {YOLO_MODEL}")
-    print(f"  Device  : CPU")
+    print(f"  Device  : {DEVICE}")
     print(f"  Epochs  : {YOLO_TRAIN_CONFIG['epochs']}")
     print("=" * 60)
 

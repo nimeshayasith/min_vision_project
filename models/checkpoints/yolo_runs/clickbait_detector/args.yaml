@@ -1,20 +1,18 @@
 task: detect
 mode: train
-model: yolov8s.pt
-data: F:\CAMPUS\Academic Semester 7\EC7205EE7204 Image processing and Computer Vision\Mini
-  Project\min_vision_project\data\roboflow\data.yaml
-epochs: 150
+model: yolov8m.pt
+data: /home/sdvn_cluster_timing/Downloads/min_vision_project/data/roboflow/data.yaml
+epochs: 100
 time: null
-patience: 15
-batch: 4
-imgsz: 640
+patience: 20
+batch: 8
+imgsz: 1024
 save: true
 save_period: -1
 cache: false
-device: cpu
-workers: 0
-project: F:\CAMPUS\Academic Semester 7\EC7205EE7204 Image processing and Computer
-  Vision\Mini Project\min_vision_project\models\checkpoints\yolo_runs
+device: '0'
+workers: 8
+project: /home/sdvn_cluster_timing/Downloads/min_vision_project/models/checkpoints/yolo_runs
 name: clickbait_detector
 exist_ok: true
 pretrained: true
@@ -30,7 +28,7 @@ resume: false
 amp: true
 fraction: 1.0
 profile: false
-freeze: null
+freeze: 10
 multi_scale: 0.0
 compile: false
 overlap_mask: true
@@ -39,7 +37,7 @@ dropout: 0.0
 val: true
 split: val
 save_json: false
-conf: 0.25
+conf: 0.15
 iou: 0.5
 max_det: 300
 half: false
@@ -50,7 +48,7 @@ source: null
 vid_stride: 1
 stream_buffer: false
 visualize: false
-augment: false
+augment: true
 agnostic_nms: false
 classes: null
 retina_masks: false
@@ -74,10 +72,10 @@ opset: null
 workspace: null
 nms: false
 lr0: 0.01
-lrf: 0.01
+lrf: 0.1
 momentum: 0.937
 weight_decay: 0.0005
-warmup_epochs: 3.0
+warmup_epochs: 3
 warmup_momentum: 0.8
 warmup_bias_lr: 0.1
 box: 7.5
@@ -89,12 +87,12 @@ kobj: 1.0
 rle: 1.0
 angle: 1.0
 nbs: 64
-hsv_h: 0.015
-hsv_s: 0.7
-hsv_v: 0.4
-degrees: 5.0
+hsv_h: 0.1
+hsv_s: 0.9
+hsv_v: 0.6
+degrees: 0.0
 translate: 0.1
-scale: 0.3
+scale: 0.5
 shear: 0.0
 perspective: 0.0
 flipud: 0.0
@@ -109,5 +107,4 @@ auto_augment: randaugment
 erasing: 0.4
 cfg: null
 tracker: botsort.yaml
-save_dir: F:\CAMPUS\Academic Semester 7\EC7205EE7204 Image processing and Computer
-  Vision\Mini Project\min_vision_project\models\checkpoints\yolo_runs\clickbait_detector
+save_dir: /home/sdvn_cluster_timing/Downloads/min_vision_project/models/checkpoints/yolo_runs/clickbait_detector
