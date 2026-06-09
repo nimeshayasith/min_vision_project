@@ -17,12 +17,13 @@ Run:
     python -m src.training.train_yolo
 """
 
+import os
 from pathlib import Path
 import torch
 from ultralytics import YOLO
 
 # ── Device ──────────────────────────────────────────────────────────────────
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+DEVICE = 0 if torch.cuda.is_available() else "cpu"
 
 # ── Paths ──────────────────────────────────────────────────────────────────
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -32,38 +33,39 @@ YOLO_MODEL   = CKPT_DIR / "yolo_clickbait.pt"
 
 CKPT_DIR.mkdir(parents=True, exist_ok=True)
 
-# ── Hyperparameters (GPU-aware) ─────────────────────────────────────────
+# ── Hyperparameters (HPC RTX 5090 32GB Optimized) ────────────────────────
 YOLO_TRAIN_CONFIG = {
-    "model":         "yolov8m.pt",   # Larger model for better recall and detection quality
+    "model":         "yolov8x.pt",     # X-Large model for absolute maximum precision!
     "data":          str(DATA_YAML),
-    "epochs":        100,              # Full long training
-    "imgsz":         1024,             # Preserve small UI elements
-    "batch":         8,                # Increase batch if GPU memory allows
-    "device":        0,
-    "workers":       8,                # More workers for faster loading on Linux
-    "patience":      20,
+    "epochs":        200,              # Increased epochs to ensure it fully converges
+    "imgsz":         1280,             # Max resolution to catch the tiniest UI buttons
+    "batch":         16,               # 32GB VRAM can handle batch 16 even at 1280p
+    "device":        DEVICE,           # Dynamic device mapping (safe for laptop and HPC)
+    "workers":       16 if os.name != "nt" else 0, # Maximize Intel i7 14th Gen cores on Linux safely
+    "patience":      30,               # Give it more time to improve before early stopping
     "lr0":           0.01,
-    "lrf":           0.1,
-    "warmup_epochs": 3,
-    "freeze":        10,               # Freeze backbone for first 10 epochs
+    "lrf":           0.01,             # Standard final learning rate fraction
+    "warmup_epochs": 5,                # Longer warmup for the massive X-Large model
+    "freeze":        15,               # Freeze backbone for 15 epochs (amazing for Transfer Learning)
     "augment":       True,
     "auto_augment":  "randaugment",
     "mosaic":        1.0,
-    "copy_paste":    0.0,
-    "mixup":         0.0,
+    "copy_paste":    0.1,              # Introduces slight synthetic button cloning
+    "mixup":         0.1,              # Advanced regularization
     "flipud":        0.0,
     "fliplr":        0.5,
-    "degrees":       0.0,
-    "scale":         0.5,
+    "degrees":       0.0,              # Keep zero (UI elements are always horizontal)
+    "scale":         0.6,              # Aggressive scale changes
     "hsv_h":         0.1,
     "hsv_s":         0.9,
     "hsv_v":         0.6,
     "conf":          0.15,
     "iou":           0.5,
     "project":       str(CKPT_DIR / "yolo_runs"),
-    "name":          "clickbait_detector",
+    "name":          "clickbait_detector_hpc",
     "exist_ok":      True,
     "verbose":       True,
+    "optimizer":     "auto",           # Let Ultralytics pick the best optimizer (usually AdamW)
 }
 
 

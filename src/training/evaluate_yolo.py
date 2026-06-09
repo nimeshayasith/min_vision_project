@@ -20,10 +20,11 @@ def evaluate_model():
     print("🚀 Loading model for evaluation...")
     model = YOLO(str(MODEL_PATH))
 
-    print("\n📊 Running validation on the validation dataset...\n")
+    print("\n📊 Running final evaluation on the unseen TEST dataset...\n")
     # 2. Run validation
-    # split='val' uses the validation set defined in data.yaml
-    metrics = model.val(data=str(DATA_YAML), split='val')
+    # imgsz=1280 must match your new high-resolution HPC training!
+    # augment=True enables Test-Time Augmentation (TTA) for a free accuracy boost
+    metrics = model.val(data=str(DATA_YAML), split='test', imgsz=1280, batch=16, augment=True)
 
     # 3. Extract metrics
     # YOLOv8 stores bounding box metrics in metrics.box
