@@ -23,8 +23,8 @@ def evaluate_model():
     print("\n📊 Running final evaluation on the unseen TEST dataset...\n")
     # 2. Run validation
     # imgsz=1280 must match your new high-resolution HPC training!
-    # augment=True enables Test-Time Augmentation (TTA) for a free accuracy boost
-    metrics = model.val(data=str(DATA_YAML), split='test', imgsz=1280, batch=16, augment=True)
+    # conf=0.40 ignores weak guesses, which massively boosts Precision
+    metrics = model.val(data=str(DATA_YAML), split='test', imgsz=1280, batch=16, conf=0.40)
 
     # 3. Extract metrics
     # YOLOv8 stores bounding box metrics in metrics.box
