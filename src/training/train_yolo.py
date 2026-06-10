@@ -1,22 +1,3 @@
-"""
-train_yolo.py — YOLOv8 Clickbait Element Detector Training
-Owner: All | Tech: Ultralytics YOLOv8, OpenCV
-
-Trains a YOLOv8n (nano) object detection model on the Roboflow-annotated
-clickbait dataset to detect individual clickbait UI elements:
-  - Buttons
-  - Computer-vision (deceptive visual elements)
-  - ad_banner
-  - close_button
-  - fake_download_button
-
-CPU-optimized: uses YOLOv8n (nano) with 50 epochs.
-Expected training time: ~30-60 minutes on CPU.
-
-Run:
-    python -m src.training.train_yolo
-"""
-
 import os
 from pathlib import Path
 import torch

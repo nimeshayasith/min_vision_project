@@ -1,27 +1,3 @@
-"""
-cv_features.py — Pure Computer Vision Feature Validator
-Owner: All | Tech: OpenCV, NumPy
-
-This module implements HUMAN-LIKE visual reasoning to validate and score
-clickbait element candidates detected by YOLOv8.
-
-A human identifies clickbait by looking at:
-  1. Color — bright red, orange, yellow → aggressive/attention-grabbing
-  2. Saturation — highly saturated = designed to stand out
-  3. Contrast — extreme contrast between text and background
-  4. Size — unusually large buttons/banners
-  5. Aspect ratio — wide banner-like shapes or square button shapes
-  6. Edge density — busy/cluttered regions = ad content
-  7. Position — centered or top of page = prime clickbait placement
-
-CV Techniques Used:
-  - HSV color space analysis (hue, saturation, value histograms)
-  - CLAHE for contrast measurement
-  - Canny edge detection for edge density
-  - Morphological operations
-  - Statistical analysis (mean, std of pixel distributions)
-"""
-
 import cv2
 import numpy as np
 

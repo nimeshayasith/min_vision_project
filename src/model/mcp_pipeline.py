@@ -1,8 +1,3 @@
-"""
-mcp_pipeline.py — Phase 5: Multi-Component Reasoning Pipeline
-Owner: Kumara | Tech: PyTorch (CNN + Self-Attention + LSTM optional)
-"""
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F

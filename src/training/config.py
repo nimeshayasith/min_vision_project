@@ -1,16 +1,3 @@
-"""
-config.py — All hyperparameters and configuration live here.
-Owner: All | Tech: Python dict
-
-Rule: NEVER hardcode learning rate, batch size, or paths inside other scripts.
-Everything goes here.
-
-Current dataset: Kaggle phishing screenshots (2 classes)
-  0 = legitimate  (genuine_site_0 folder)
-  1 = phishing    (phishing_site_1 folder)
-  2 = clickbait   (reserved — add self-collected data later)
-"""
-
 CONFIG = {
     # Model
     "backbone":     "resnet50",   # Options: "resnet50", "vit_base_patch16_224"

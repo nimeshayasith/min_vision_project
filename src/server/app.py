@@ -1,16 +1,3 @@
-"""
-app.py — Flask Backend Server (Rebuilt for Element-Level Detection)
-Tech: Flask, YOLOv8 (Ultralytics), OpenCV
-
-Pipeline:
-  1. Receive base64 screenshot from Chrome extension
-  2. Run YOLOv8 object detector → get clickbait element bounding boxes
-  3. Run CV feature validator → score each region visually (human-like)
-  4. Return filtered boxes with coordinates + confidence
-
-Start server:
-    python -m src.server.app
-"""
 
 import base64
 import io

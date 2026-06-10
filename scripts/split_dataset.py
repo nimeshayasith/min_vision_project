@@ -1,17 +1,3 @@
-"""
-split_dataset.py — Phase 1, Step 1.5
-Splits annotated dataset into train / val / test sets.
-
-Usage:
-    python scripts/split_dataset.py \
-        --input_dir data/annotated \
-        --output_dir data/processed \
-        --train 0.70 \
-        --val 0.15 \
-        --test 0.15 \
-        --seed 42
-"""
-
 import os
 import shutil
 import random

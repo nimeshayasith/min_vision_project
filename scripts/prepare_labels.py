@@ -1,24 +1,3 @@
-"""
-prepare_labels.py — Phase 1, Step 1.4 (Automated label generation)
-
-Since this dataset is organized by folder name (genuine_site_0 / phishing_site_1),
-we auto-generate image-level labels WITHOUT bounding boxes.
-
-Each label file contains one line:
-    <class_id> 0.5 0.5 1.0 1.0
-    (whole-image bounding box in YOLO normalized format)
-
-Label map:
-    0 = legitimate  (from genuine_site_0/)
-    1 = phishing    (from phishing_site_1/)
-    2 = clickbait   (reserved for future self-collected data)
-
-Usage:
-    python scripts/prepare_labels.py \
-        --cleaned_dir data/cleaned \
-        --annotated_dir data/annotated
-"""
-
 import argparse
 import shutil
 from pathlib import Path

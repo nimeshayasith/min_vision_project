@@ -1,8 +1,3 @@
-"""
-Fix labels: convert polygon/segment label lines into YOLO bbox lines.
-Backs up original files with a .bak extension.
-Usage: python scripts/fix_labels_polygon_to_bbox.py
-"""
 import os
 from pathlib import Path
 

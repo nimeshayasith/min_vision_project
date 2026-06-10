@@ -1,9 +1,3 @@
-"""
-Visualize YOLO labels overlaid on images for random samples.
-Saves outputs to debug_preprocessing/label_checks/.
-
-Usage: python scripts/visualize_label_samples.py --split train --n 10
-"""
 import argparse
 import random
 from pathlib import Path

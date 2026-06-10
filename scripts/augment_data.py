@@ -1,12 +1,3 @@
-"""
-augment_data.py — Phase 4, Step 4.2
-Data augmentation pipeline using Albumentations.
-
-Provides:
-  - get_train_transforms(): heavy augmentation for training
-  - get_val_transforms():   resize-only for validation/test
-"""
-
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 

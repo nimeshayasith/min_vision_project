@@ -1,11 +1,3 @@
-"""
-evaluate.py — Phase 8: Model Evaluation & Testing
-Owner: All | Tech: scikit-learn, matplotlib, seaborn
-
-Run evaluation:
-    python -m src.evaluation.evaluate
-"""
-
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
@@ -28,7 +20,7 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 # ─────────────────────────────────────────────
-# Step 8.1 — Classification Evaluation
+# Step — Classification Evaluation
 # ─────────────────────────────────────────────
 
 def evaluate_model(model: ClickbaitDetector, test_loader: DataLoader) -> dict:

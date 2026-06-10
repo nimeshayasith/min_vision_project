@@ -1,21 +1,3 @@
-"""
-data_cleaning.py — Phase 1, Step 1.3
-Removes duplicate and low-quality images from raw dataset folders.
-
-Usage:
-    python scripts/data_cleaning.py \
-        --input_dir data/raw/genuine_site_0 \
-        --output_dir data/cleaned/genuine_site_0 \
-        --min_size 100 \
-        --remove_duplicates
-
-    python scripts/data_cleaning.py \
-        --input_dir data/raw/phishing_site_1 \
-        --output_dir data/cleaned/phishing_site_1 \
-        --min_size 100 \
-        --remove_duplicates
-"""
-
 import os
 import cv2
 import hashlib
@@ -44,18 +26,7 @@ def clean_dataset(
     min_size: int = 100,
     remove_duplicates: bool = True
 ) -> None:
-    """
-    Clean a directory of images by removing:
-    - Unreadable or corrupted files
-    - Images smaller than min_size in either dimension
-    - Exact duplicate images (by MD5 hash)
-
-    Args:
-        input_dir:         Source directory containing .png images
-        output_dir:        Destination directory for cleaned images
-        min_size:          Minimum pixel size in width or height (default: 100)
-        remove_duplicates: If True, remove exact duplicate images
-    """
+ 
     input_dir = Path(input_dir)
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)

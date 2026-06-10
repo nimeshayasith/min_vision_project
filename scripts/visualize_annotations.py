@@ -1,13 +1,3 @@
-"""
-visualize_annotations.py — Preview bounding box labels on images.
-
-Usage:
-    python scripts/visualize_annotations.py \
-        --images_dir data/annotated/images \
-        --labels_dir data/annotated/labels \
-        --num_samples 5
-"""
-
 import cv2
 import random
 import argparse

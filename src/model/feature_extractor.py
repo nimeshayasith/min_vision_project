@@ -1,8 +1,3 @@
-"""
-feature_extractor.py — Phase 4: Visual Feature Extraction
-Owner: Koshala | Tech: PyTorch, timm (ResNet-50 / ViT)
-"""
-
 import torch
 import torch.nn as nn
 import timm

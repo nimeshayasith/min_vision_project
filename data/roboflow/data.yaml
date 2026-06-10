@@ -1,10 +1,10 @@
-path: /home/sdvn_cluster_timing/Downloads/min_vision_project/data/roboflow
+path: data/roboflow
 train: train/images
 val: valid/images
 test: test/images
 
 nc: 1
-names: ['fake_button']
+names: ["fake_button"]
 
 roboflow:
   workspace: nimeshas-workspace-h5qjz
