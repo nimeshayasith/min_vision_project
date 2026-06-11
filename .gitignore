@@ -55,3 +55,17 @@ runs/
 # ── Kaggle API key ────────────────────────────────────────────────────────────
 kaggle.json
 *.json.bak
+
+# Debug images
+debug_preprocessing/*.png
+
+# Roboflow datasets
+data/roboflow/train/
+data/roboflow/test/
+data/roboflow/valid/
+
+# YOLO checkpoints and runs
+models/checkpoints/yolo_runs/
+
+# YOLO pretrained weights
+yolov8n.pt
